@@ -1,1 +1,0 @@
-# mobil-uygulama-gelistirme-proje
