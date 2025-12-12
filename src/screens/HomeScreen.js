@@ -1,33 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
 
 export default function HomeScreen() {
-  // 25 dakika = 1500 saniye
-  const INITIAL_TIME = 25 * 60; 
+  const INITIAL_TIME = 25 * 60; // 25 dakika
   
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
   const [isActive, setIsActive] = useState(false);
-  const [category, setCategory] = useState(null); // Seçilen kategori
+  const [category, setCategory] = useState(null);
+  
+  // YENİ: Dikkat dağınıklığı sayacı
+  const [distractionCount, setDistractionCount] = useState(0);
+
+  // AppState'i takip etmek için ref kullanıyoruz
+  const appState = useRef(AppState.currentState);
 
   const categories = ["Ders Çalışma", "Kodlama", "Proje", "Kitap Okuma"];
 
-  // Sayaç Mantığı (useEffect)
+  // 1. SAYAÇ MANTIĞI
   useEffect(() => {
     let interval = null;
-
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prevTime) => prevTime - 1);
       }, 1000);
     } else if (timeLeft === 0) {
-      // Süre bittiğinde
       setIsActive(false);
       clearInterval(interval);
       Alert.alert("Tebrikler!", "Odaklanma seansını başarıyla tamamladın.");
     }
-
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
+
+  // 2. APPSTATE (ODAKLANMA TAKİBİ) MANTIĞI - YENİ KISIM
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      // Eğer uygulama arka plana (background) veya inaktif duruma geçerse
+      if (
+        appState.current.match(/active/) && 
+        (nextAppState === 'background' || nextAppState === 'inactive')
+      ) {
+        // Eğer sayaç çalışıyorsa durdur ve dikkati dağıldı say
+        if (isActive) {
+            setIsActive(false); // Sayacı duraklat
+            setDistractionCount(prev => prev + 1); // Hatayı 1 arttır
+            Alert.alert("Dikkat Dağınıklığı!", "Uygulamadan çıktığınız için sayaç duraklatıldı.");
+        }
+      }
+
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isActive]); // isActive bağımlılığı önemli: sadece sayaç çalışırken takip etsin
 
   // Yardımcı Fonksiyonlar
   const startTimer = () => {
@@ -38,17 +64,14 @@ export default function HomeScreen() {
     setIsActive(true);
   };
 
-  const pauseTimer = () => {
-    setIsActive(false);
-  };
+  const pauseTimer = () => setIsActive(false);
 
   const resetTimer = () => {
     setIsActive(false);
     setTimeLeft(INITIAL_TIME);
-    // İstersen kategoriyi de sıfırlayabilirsin: setCategory(null);
+    setDistractionCount(0); // Sayacı sıfırlarken hataları da sıfırla
   };
 
-  // Saniyeyi Dakika:Saniye formatına çevir (Örn: 25:00)
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -59,9 +82,11 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>Pomodoro Sayacı</Text>
 
-      {/* Sayaç Göstergesi */}
+      {/* Sayaç Dairesi */}
       <View style={styles.timerContainer}>
         <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+        {/* YENİ: Dikkat Dağınıklığı Göstergesi */}
+        <Text style={styles.distractionText}>Odak Kaybı: {distractionCount}</Text>
       </View>
 
       {/* Kategori Seçimi */}
@@ -73,9 +98,9 @@ export default function HomeScreen() {
               key={cat}
               style={[
                 styles.categoryButton,
-                category === cat && styles.selectedCategory // Seçiliyse rengi değiştir
+                category === cat && styles.selectedCategory
               ]}
-              onPress={() => !isActive && setCategory(cat)} // Sayaç çalışırken değiştirmesin
+              onPress={() => !isActive && setCategory(cat)}
             >
               <Text style={[
                 styles.categoryText,
@@ -86,7 +111,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Kontrol Butonları */}
+      {/* Butonlar */}
       <View style={styles.controls}>
         {!isActive ? (
           <TouchableOpacity style={styles.buttonStart} onPress={startTimer}>
@@ -108,13 +133,14 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', paddingTop: 60 },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 30, color: '#333' },
+  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
   
   timerContainer: {
     width: 250, height: 250, borderRadius: 125, borderWidth: 4, borderColor: '#4a90e2',
     justifyContent: 'center', alignItems: 'center', marginBottom: 30
   },
   timerText: { fontSize: 60, fontWeight: 'bold', color: '#333' },
+  distractionText: { fontSize: 16, color: 'red', marginTop: 10, fontWeight: 'bold' },
   
   categoryContainer: { width: '90%', marginBottom: 30 },
   subHeader: { fontSize: 16, marginBottom: 10, color: '#666', textAlign: 'center' },
