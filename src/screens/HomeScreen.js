@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
+import { saveSession } from '../utils/storage'; // YENİ EKLENDİ
 
 export default function HomeScreen() {
   const INITIAL_TIME = 25 * 60; // 25 dakika
@@ -24,10 +25,11 @@ export default function HomeScreen() {
         setTimeLeft((prevTime) => prevTime - 1);
       }, 1000);
     } else if (timeLeft === 0) {
-      setIsActive(false);
-      clearInterval(interval);
-      Alert.alert("Tebrikler!", "Odaklanma seansını başarıyla tamamladın.");
-    }
+        setIsActive(false);
+        clearInterval(interval);
+        Alert.alert("Tebrikler!", "Odaklanma seansını başarıyla tamamladın.");
+        saveCurrentSession(INITIAL_TIME); // <--- BU SATIRI EKLE (Süre bitti, tam zamanı kaydet)
+     }
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
@@ -66,11 +68,66 @@ export default function HomeScreen() {
 
   const pauseTimer = () => setIsActive(false);
 
-  const resetTimer = () => {
+  // Mevcut resetTimer fonksiyonunu SİL ve bunu YAPIŞTIR
+  const resetTimer = async () => {
+    // Eğer kayda değer bir süre (örn: 10 saniye) çalışıldıysa kaydetmeyi teklif et
+    const timeSpent = INITIAL_TIME - timeLeft;
+    
+    if (timeSpent > 10 && isActive) { // Sadece çalışıyorken sor
+        Alert.alert(
+            "Seansı Bitir",
+            "Bu oturumu kaydetmek ister misiniz?",
+            [
+                {
+                    text: "Kaydetme",
+                    style: "cancel",
+                    onPress: () => {
+                        stopAndReset();
+                    }
+                },
+                {
+                    text: "Kaydet",
+                    onPress: async () => {
+                        await saveCurrentSession(timeSpent);
+                        stopAndReset();
+                    }
+                }
+            ]
+        );
+    } else {
+        stopAndReset();
+    }
+  };
+
+  const stopAndReset = () => {
     setIsActive(false);
     setTimeLeft(INITIAL_TIME);
-    setDistractionCount(0); // Sayacı sıfırlarken hataları da sıfırla
+    setDistractionCount(0);
   };
+
+  // Veriyi hazırlayıp kaydeden fonksiyon
+  const saveCurrentSession = async (duration) => {
+    const sessionData = {
+        id: Date.now().toString(), // Benzersiz ID
+        date: new Date().toISOString(), // Tarih
+        duration: duration, // Saniye cinsinden odaklanma süresi
+        category: category || "Genel",
+        distractionCount: distractionCount
+    };
+    await saveSession(sessionData);
+    Alert.alert("Başarılı", "Odaklanma seansınız kaydedildi!");
+  };
+
+  // Ayrıca: Süre kendiliğinden biterse (0 olursa) otomatik kaydetmesi için
+  // useEffect içindeki 'timeLeft === 0' bloğuna şu satırı ekle:
+  /*
+     else if (timeLeft === 0) {
+        setIsActive(false);
+        clearInterval(interval);
+        Alert.alert("Tebrikler!", "Odaklanma seansını başarıyla tamamladın.");
+        saveCurrentSession(INITIAL_TIME); // <--- BU SATIRI EKLE (Süre bitti, tam zamanı kaydet)
+     }
+  */
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
