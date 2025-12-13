@@ -1,133 +1,143 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
-import { saveSession } from '../utils/storage'; // YENİ EKLENDİ
+import { saveSession } from '../utils/storage'; 
 
 export default function HomeScreen() {
-  const INITIAL_TIME = 25 * 60; // 25 dakika
+  const INITIAL_TIME = 2 * 60; // 25 dakika
   
   const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
   const [isActive, setIsActive] = useState(false);
   const [category, setCategory] = useState(null);
-  
-  // YENİ: Dikkat dağınıklığı sayacı
   const [distractionCount, setDistractionCount] = useState(0);
 
-  // AppState'i takip etmek için ref kullanıyoruz
+  // AppState takibi için ref
   const appState = useRef(AppState.currentState);
 
   const categories = ["Ders Çalışma", "Kodlama", "Proje", "Kitap Okuma"];
 
-  // 1. SAYAÇ MANTIĞI
+  // 1. SAYAÇ VE BİTİŞ MANTIĞI
   useEffect(() => {
     let interval = null;
+
     if (isActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prevTime) => prevTime - 1);
       }, 1000);
-    } else if (timeLeft === 0) {
-        setIsActive(false);
-        clearInterval(interval);
-        Alert.alert("Tebrikler!", "Odaklanma seansını başarıyla tamamladın.");
-        saveCurrentSession(INITIAL_TIME); // <--- BU SATIRI EKLE (Süre bitti, tam zamanı kaydet)
-     }
+    } else if (timeLeft === 0 && isActive) {
+      // SÜRE BİTTİĞİ AN (Sadece isActive true ise girer, bu sayede loop engellenir)
+      finishSession();
+      clearInterval(interval);
+    }
+
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
-  // 2. APPSTATE (ODAKLANMA TAKİBİ) MANTIĞI - YENİ KISIM
+  // 2. ODAKLANMA TAKİBİ (APP STATE)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
-      // Eğer uygulama arka plana (background) veya inaktif duruma geçerse
       if (
         appState.current.match(/active/) && 
         (nextAppState === 'background' || nextAppState === 'inactive')
       ) {
-        // Eğer sayaç çalışıyorsa durdur ve dikkati dağıldı say
         if (isActive) {
-            setIsActive(false); // Sayacı duraklat
-            setDistractionCount(prev => prev + 1); // Hatayı 1 arttır
+            setIsActive(false);
+            setDistractionCount(prev => prev + 1);
             Alert.alert("Dikkat Dağınıklığı!", "Uygulamadan çıktığınız için sayaç duraklatıldı.");
         }
       }
-
       appState.current = nextAppState;
     });
 
     return () => {
       subscription.remove();
     };
-  }, [isActive]); // isActive bağımlılığı önemli: sadece sayaç çalışırken takip etsin
+  }, [isActive]);
 
-  // Yardımcı Fonksiyonlar
+  // --- YENİ FONKSİYONLAR ---
+
+  // Süre bittiğinde çalışacak tek fonksiyon
+  const finishSession = async () => {
+    setIsActive(false); // Önce sayacı durdur
+    
+    // Veriyi kaydet
+    await saveCurrentSession(INITIAL_TIME);
+
+    // Tek bir tebrik mesajı göster ve süreyi sıfırla
+    Alert.alert(
+        "Tebrikler! 🎉", 
+        "Odaklanma seansını başarıyla tamamladın ve verilerin kaydedildi.",
+        [
+            { text: "Tamam", onPress: () => softReset() }
+        ]
+    );
+  };
+
+  // Veriyi veritabanına işleyen fonksiyon
+  const saveCurrentSession = async (duration) => {
+    const sessionData = {
+        id: Date.now().toString(),
+        date: new Date().toISOString(),
+        duration: duration,
+        category: category || "Genel",
+        distractionCount: distractionCount
+    };
+    await saveSession(sessionData);
+  };
+
+  // Sayaç bittiğinde süreyi başa saran fonksiyon (Kategori kalır)
+  const softReset = () => {
+    setTimeLeft(INITIAL_TIME);
+    setDistractionCount(0);
+    setIsActive(false);
+  };
+
+  // Buton Fonksiyonları
   const startTimer = () => {
     if (!category) {
       Alert.alert("Uyarı", "Lütfen önce bir kategori seçin!");
       return;
+    }
+    // Eğer süre 0 ise (bittiği halde tekrar basıldıysa) başa al
+    if (timeLeft === 0) {
+        setTimeLeft(INITIAL_TIME);
+        setDistractionCount(0);
     }
     setIsActive(true);
   };
 
   const pauseTimer = () => setIsActive(false);
 
-  // Mevcut resetTimer fonksiyonunu SİL ve bunu YAPIŞTIR
-  const resetTimer = async () => {
-    // Eğer kayda değer bir süre (örn: 10 saniye) çalışıldıysa kaydetmeyi teklif et
-    const timeSpent = INITIAL_TIME - timeLeft;
-    
-    if (timeSpent > 10 && isActive) { // Sadece çalışıyorken sor
-        Alert.alert(
-            "Seansı Bitir",
-            "Bu oturumu kaydetmek ister misiniz?",
-            [
-                {
-                    text: "Kaydetme",
-                    style: "cancel",
-                    onPress: () => {
-                        stopAndReset();
-                    }
-                },
-                {
-                    text: "Kaydet",
-                    onPress: async () => {
-                        await saveCurrentSession(timeSpent);
-                        stopAndReset();
-                    }
-                }
-            ]
-        );
-    } else {
-        stopAndReset();
+  const resetTimer = () => {
+    // Eğer süre hiç başlamadıysa veya tamamsa direkt sıfırla
+    if (timeLeft === INITIAL_TIME) {
+        softReset();
+        return;
     }
-  };
 
-  const stopAndReset = () => {
-    setIsActive(false);
-    setTimeLeft(INITIAL_TIME);
-    setDistractionCount(0);
+    // Kullanıcı manuel sıfırlıyorsa soralım
+    Alert.alert(
+        "Seansı Bitir",
+        "Bu oturumu kaydetmek ister misiniz?",
+        [
+            {
+                text: "Kaydetme",
+                style: "cancel",
+                onPress: () => softReset()
+            },
+            {
+                text: "Kaydet",
+                onPress: async () => {
+                    const timeSpent = INITIAL_TIME - timeLeft;
+                    // Çok kısa süreleri (örn 10 sn altı) kaydetmesin
+                    if (timeSpent > 10) {
+                        await saveCurrentSession(timeSpent);
+                    }
+                    softReset();
+                }
+            }
+        ]
+    );
   };
-
-  // Veriyi hazırlayıp kaydeden fonksiyon
-  const saveCurrentSession = async (duration) => {
-    const sessionData = {
-        id: Date.now().toString(), // Benzersiz ID
-        date: new Date().toISOString(), // Tarih
-        duration: duration, // Saniye cinsinden odaklanma süresi
-        category: category || "Genel",
-        distractionCount: distractionCount
-    };
-    await saveSession(sessionData);
-    Alert.alert("Başarılı", "Odaklanma seansınız kaydedildi!");
-  };
-
-  // Ayrıca: Süre kendiliğinden biterse (0 olursa) otomatik kaydetmesi için
-  // useEffect içindeki 'timeLeft === 0' bloğuna şu satırı ekle:
-  /*
-     else if (timeLeft === 0) {
-        setIsActive(false);
-        clearInterval(interval);
-        Alert.alert("Tebrikler!", "Odaklanma seansını başarıyla tamamladın.");
-        saveCurrentSession(INITIAL_TIME); // <--- BU SATIRI EKLE (Süre bitti, tam zamanı kaydet)
-     }
-  */
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -139,14 +149,11 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>Pomodoro Sayacı</Text>
 
-      {/* Sayaç Dairesi */}
       <View style={styles.timerContainer}>
         <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-        {/* YENİ: Dikkat Dağınıklığı Göstergesi */}
         <Text style={styles.distractionText}>Odak Kaybı: {distractionCount}</Text>
       </View>
 
-      {/* Kategori Seçimi */}
       <View style={styles.categoryContainer}>
         <Text style={styles.subHeader}>Kategori Seç:</Text>
         <View style={styles.categoryList}>
@@ -168,11 +175,13 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* Butonlar */}
       <View style={styles.controls}>
         {!isActive ? (
           <TouchableOpacity style={styles.buttonStart} onPress={startTimer}>
-            <Text style={styles.buttonText}>Başlat</Text>
+            {/* DÜZELTME: Süre başlamışsa ve durmuşsa 'Devam Et' yazar */}
+            <Text style={styles.buttonText}>
+                {timeLeft < INITIAL_TIME && timeLeft > 0 ? "Devam Et" : "Başlat"}
+            </Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity style={styles.buttonPause} onPress={pauseTimer}>
