@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { BarChart, PieChart } from 'react-native-chart-kit';
-import { getSessions } from '../utils/storage';
+import { getSessions, clearSessions } from '../utils/storage'; // clearSessions eklendi
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -15,7 +15,7 @@ export default function ReportsScreen() {
   });
   const [refreshing, setRefreshing] = useState(false);
 
-  // Ekran her odaklandığında verileri çek
+  // Sayfaya her gelindiğinde verileri çek
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -46,23 +46,46 @@ export default function ReportsScreen() {
     });
 
     setStats({
-      todayFocus: Math.floor(todayTotal / 60), // Dakikaya çevir
+      todayFocus: Math.floor(todayTotal / 60),
       totalFocus: Math.floor(grandTotal / 60),
       totalDistractions: distractions
     });
   };
 
-  // GRAFİK VERİLERİ HAZIRLIĞI
-  
-  // 1. Pasta Grafik Verisi (Kategorilere Göre)
+  // --- YENİ: VERİ SIFIRLAMA FONKSİYONU ---
+  const handleResetData = () => {
+    Alert.alert(
+      "Verileri Sıfırla",
+      "Tüm odaklanma geçmişiniz ve istatistikleriniz silinecek. Emin misiniz?",
+      [
+        { text: "Vazgeç", style: "cancel" },
+        { 
+          text: "Sil", 
+          style: 'destructive', // iOS'ta kırmızı gösterir
+          onPress: async () => {
+            await clearSessions(); // Veritabanını temizle
+            await loadData(); // Ekranı yenile (Grafikleri boşalt)
+            Alert.alert("Başarılı", "Tüm veriler temizlendi.");
+          }
+        }
+      ]
+    );
+  };
+
+  // Grafik Verileri Hazırlama
   const getPieData = () => {
     const categoryMap = {};
     sessions.forEach(s => {
       if (!categoryMap[s.category]) categoryMap[s.category] = 0;
-      categoryMap[s.category] += Math.floor(s.duration / 60); // Dakika olarak
+      categoryMap[s.category] += Math.floor(s.duration / 60);
     });
 
-    const colors = ['#f39c12', '#e74c3c', '#3498db', '#9b59b6', '#2ecc71'];
+    // Veri yoksa boş dönmesin diye kontrol
+    if (Object.keys(categoryMap).length === 0) {
+       return [{ name: "Veri Yok", population: 100, color: "#e0e0e0", legendFontColor: "#7F7F7F", legendFontSize: 12 }];
+    }
+
+    const colors = ['#f39c12', '#e74c3c', '#3498db', '#9b59b6', '#2ecc71', '#95a5a6']; // Gri renk eklendi (Diğer için)
     return Object.keys(categoryMap).map((key, index) => ({
       name: key,
       population: categoryMap[key],
@@ -72,7 +95,6 @@ export default function ReportsScreen() {
     }));
   };
 
-  // 2. Çubuk Grafik Verisi (Son 7 Gün)
   const getBarData = () => {
     const days = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
     const last7Days = [];
@@ -86,12 +108,11 @@ export default function ReportsScreen() {
       
       last7Days.push(dayName);
       
-      // O günkü toplam süreyi bul
       const totalSeconds = sessions
         .filter(s => s.date.startsWith(dateStr))
         .reduce((sum, item) => sum + item.duration, 0);
       
-      values.push(Math.floor(totalSeconds / 60)); // Dakika
+      values.push(Math.floor(totalSeconds / 60));
     }
 
     return {
@@ -107,7 +128,6 @@ export default function ReportsScreen() {
     >
       <Text style={styles.header}>İstatistikler</Text>
 
-      {/* ÖZET KARTLARI */}
       <View style={styles.statsContainer}>
         <View style={styles.card}>
             <Text style={styles.cardTitle}>Bugün</Text>
@@ -123,7 +143,6 @@ export default function ReportsScreen() {
         </View>
       </View>
 
-      {/* GRAFİKLER */}
       <Text style={styles.chartTitle}>Son 7 Gün (Dakika)</Text>
       <BarChart
         data={getBarData()}
@@ -145,6 +164,11 @@ export default function ReportsScreen() {
         paddingLeft={"15"}
         absolute
       />
+
+      {/* YENİ: SIFIRLAMA BUTONU */}
+      <TouchableOpacity style={styles.resetButton} onPress={handleResetData}>
+        <Text style={styles.resetButtonText}>Tüm Verileri Sıfırla</Text>
+      </TouchableOpacity>
       
       <View style={{height: 50}} /> 
     </ScrollView>
@@ -174,5 +198,22 @@ const styles = StyleSheet.create({
   cardValue: { fontSize: 18, fontWeight: 'bold', color: '#2c3e50' },
 
   chartTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 10, marginBottom: 10, color: '#444' },
-  chart: { marginVertical: 8, borderRadius: 16 }
+  chart: { marginVertical: 8, borderRadius: 16 },
+
+  // Yeni Buton Stilleri
+  resetButton: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e74c3c',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 30
+  },
+  resetButtonText: {
+    color: '#e74c3c',
+    fontWeight: 'bold',
+    fontSize: 16
+  }
 });

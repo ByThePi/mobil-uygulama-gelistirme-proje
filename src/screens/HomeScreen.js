@@ -13,7 +13,7 @@ export default function HomeScreen() {
   // AppState takibi için ref
   const appState = useRef(AppState.currentState);
 
-  const categories = ["Ders Çalışma", "Kodlama", "Proje", "Kitap Okuma"];
+  const categories = ["Ders Çalışma", "Kodlama", "Proje", "Kitap Okuma", "Diğer"];
 
   // 1. SAYAÇ VE BİTİŞ MANTIĞI
   useEffect(() => {
