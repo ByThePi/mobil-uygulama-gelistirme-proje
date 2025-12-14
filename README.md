@@ -1,50 +1,58 @@
-# Welcome to your Expo app 👋
+# Odaklanma Takibi ve Raporlama Uygulaması (Focus Tracker)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Bu proje, Sakarya Üniversitesi Bilgisayar Mühendisliği Bölümü, Mobil Uygulama Geliştirme dersi dönem projesi olarak geliştirilmiştir.
 
-## Get started
+Uygulama, kullanıcıların dijital dikkat dağınıklığıyla mücadele etmesine yardımcı olmayı amaçlayan, Pomodoro tekniği tabanlı bir odaklanma asistanıdır.
 
-1. Install dependencies
+## Özellikler
 
-   ```bash
-   npm install
-   ```
+* **Ayarlanabilir Sayaç:** Varsayılan 25 dakika (Pomodoro) ile başlayan, artırılabilir/azaltılabilir odaklanma sayacı.
+* **Dikkat Dağınıklığı Takibi (Distraction Tracking):** Kullanıcı odaklanma sırasındayken uygulamadan çıkarsa (Instagram, WhatsApp vb. için), uygulama bunu algılar (`AppState`), sayacı otomatik duraklatır ve "Odak Kaybı" sayısını artırır.
+* **Kategorilendirme:** Odaklanma seansları Ders, Kodlama, Kitap Okuma gibi kategorilere ayrılabilir.
+* **Veri Kalıcılığı:** Tüm veriler `AsyncStorage` kullanılarak cihazda yerel olarak saklanır.
+* **Detaylı Raporlama:**
+    * Günlük ve Toplam Odaklanma İstatistikleri.
+    * Son 7 günün performansını gösteren **Çubuk Grafik (Bar Chart)**.
+    * Kategori dağılımını gösteren **Pasta Grafik (Pie Chart)**.
+* **Modüler Mimari:** Temiz kod prensiplerine uygun, yeniden kullanılabilir bileşen (Component) yapısı.
 
-2. Start the app
+## Kullanılan Teknolojiler
 
-   ```bash
-   npx expo start
-   ```
+* **React Native (Expo)** - Mobil Geliştirme Ortamı
+* **React Navigation** - Sayfalar Arası Geçiş (Tab Navigation)
+* **AsyncStorage** - Yerel Veri Tabanı
+* **React Native Chart Kit** - Veri Görselleştirme
+* **React Native AppState API** - Durum Yönetimi
 
-In the output, you'll find options to open the app in a
+## Kurulum ve Çalıştırma
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyin:
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1.  **Repoyu Klonlayın:**
+    ```bash
+    git clone [https://github.com/bythepi/OdaklanmaUygulamasi.git](https://github.com/bythepi/OdaklanmaUygulamasi.git)
+    cd OdaklanmaUygulamasi
+    ```
 
-## Get a fresh project
+2.  **Gerekli Paketleri Yükleyin:**
+    ```bash
+    npm install
+    ```
 
-When you're ready, run:
+3.  **Uygulamayı Başlatın:**
+    ```bash
+    npx expo start
+    ```
 
-```bash
-npm run reset-project
-```
+4.  **Telefonunuzda Görüntüleyin:**
+    * Expo Go uygulamasını telefonunuza indirin.
+    * Terminalde çıkan QR kodu okutun.
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 📂 Proje Mimarisi
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```text
+src/
+├── components/      # Tekrar kullanılabilir UI parçaları (TimerCircle, StatCard vb.)
+├── screens/         # Uygulama ekranları (HomeScreen, ReportsScreen)
+├── navigation/      # Navigasyon ayarları (TabNavigator)
+└── utils/           # Yardımcı fonksiyonlar (Veritabanı işlemleri)
