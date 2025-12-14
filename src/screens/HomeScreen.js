@@ -1,21 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; 
 import { saveSession } from '../utils/storage'; 
 
 export default function HomeScreen() {
-  const INITIAL_TIME = 2 * 60; // 25 dakika
+  const [initialTime, setInitialTime] = useState(25 * 60); 
   
-  const [timeLeft, setTimeLeft] = useState(INITIAL_TIME);
+  const [timeLeft, setTimeLeft] = useState(initialTime);
   const [isActive, setIsActive] = useState(false);
   const [category, setCategory] = useState(null);
   const [distractionCount, setDistractionCount] = useState(0);
 
-  // AppState takibi için ref
   const appState = useRef(AppState.currentState);
 
   const categories = ["Ders Çalışma", "Kodlama", "Proje", "Kitap Okuma", "Diğer"];
 
-  // 1. SAYAÇ VE BİTİŞ MANTIĞI
   useEffect(() => {
     let interval = null;
 
@@ -24,7 +23,6 @@ export default function HomeScreen() {
         setTimeLeft((prevTime) => prevTime - 1);
       }, 1000);
     } else if (timeLeft === 0 && isActive) {
-      // SÜRE BİTTİĞİ AN (Sadece isActive true ise girer, bu sayede loop engellenir)
       finishSession();
       clearInterval(interval);
     }
@@ -32,7 +30,6 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, [isActive, timeLeft]);
 
-  // 2. ODAKLANMA TAKİBİ (APP STATE)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (
@@ -53,16 +50,25 @@ export default function HomeScreen() {
     };
   }, [isActive]);
 
-  // --- YENİ FONKSİYONLAR ---
+  const increaseTime = () => {
+    if (isActive) return;
+    const newTime = initialTime + 60;
+    setInitialTime(newTime);
+    setTimeLeft(newTime);
+  };
 
-  // Süre bittiğinde çalışacak tek fonksiyon
+  const decreaseTime = () => {
+    if (isActive) return;
+    if (initialTime > 60) {
+        const newTime = initialTime - 60;
+        setInitialTime(newTime);
+        setTimeLeft(newTime);
+    }
+  };
+
   const finishSession = async () => {
-    setIsActive(false); // Önce sayacı durdur
-    
-    // Veriyi kaydet
-    await saveCurrentSession(INITIAL_TIME);
-
-    // Tek bir tebrik mesajı göster ve süreyi sıfırla
+    setIsActive(false);
+    await saveCurrentSession(initialTime);
     Alert.alert(
         "Tebrikler! 🎉", 
         "Odaklanma seansını başarıyla tamamladın ve verilerin kaydedildi.",
@@ -72,7 +78,6 @@ export default function HomeScreen() {
     );
   };
 
-  // Veriyi veritabanına işleyen fonksiyon
   const saveCurrentSession = async (duration) => {
     const sessionData = {
         id: Date.now().toString(),
@@ -84,22 +89,19 @@ export default function HomeScreen() {
     await saveSession(sessionData);
   };
 
-  // Sayaç bittiğinde süreyi başa saran fonksiyon (Kategori kalır)
   const softReset = () => {
-    setTimeLeft(INITIAL_TIME);
+    setTimeLeft(initialTime);
     setDistractionCount(0);
     setIsActive(false);
   };
 
-  // Buton Fonksiyonları
   const startTimer = () => {
     if (!category) {
       Alert.alert("Uyarı", "Lütfen önce bir kategori seçin!");
       return;
     }
-    // Eğer süre 0 ise (bittiği halde tekrar basıldıysa) başa al
     if (timeLeft === 0) {
-        setTimeLeft(INITIAL_TIME);
+        setTimeLeft(initialTime);
         setDistractionCount(0);
     }
     setIsActive(true);
@@ -108,13 +110,11 @@ export default function HomeScreen() {
   const pauseTimer = () => setIsActive(false);
 
   const resetTimer = () => {
-    // Eğer süre hiç başlamadıysa veya tamamsa direkt sıfırla
-    if (timeLeft === INITIAL_TIME) {
+    if (timeLeft === initialTime) {
         softReset();
         return;
     }
 
-    // Kullanıcı manuel sıfırlıyorsa soralım
     Alert.alert(
         "Seansı Bitir",
         "Bu oturumu kaydetmek ister misiniz?",
@@ -127,8 +127,7 @@ export default function HomeScreen() {
             {
                 text: "Kaydet",
                 onPress: async () => {
-                    const timeSpent = INITIAL_TIME - timeLeft;
-                    // Çok kısa süreleri (örn 10 sn altı) kaydetmesin
+                    const timeSpent = initialTime - timeLeft;
                     if (timeSpent > 10) {
                         await saveCurrentSession(timeSpent);
                     }
@@ -149,9 +148,29 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>Pomodoro Sayacı</Text>
 
-      <View style={styles.timerContainer}>
-        <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-        <Text style={styles.distractionText}>Odak Kaybı: {distractionCount}</Text>
+      <View style={styles.timerWrapper}>
+        
+        <TouchableOpacity 
+            style={[styles.adjustButton, isActive && styles.disabledButton]} 
+            onPress={decreaseTime}
+            disabled={isActive}
+        >
+            <Ionicons name="remove-circle-outline" size={45} color={isActive ? "#ccc" : "#e74c3c"} />
+        </TouchableOpacity>
+
+        <View style={styles.timerContainer}>
+            <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+            <Text style={styles.distractionText}>Odak Kaybı: {distractionCount}</Text>
+        </View>
+
+        <TouchableOpacity 
+            style={[styles.adjustButton, isActive && styles.disabledButton]} 
+            onPress={increaseTime}
+            disabled={isActive}
+        >
+             <Ionicons name="add-circle-outline" size={45} color={isActive ? "#ccc" : "#2ecc71"} />
+        </TouchableOpacity>
+
       </View>
 
       <View style={styles.categoryContainer}>
@@ -178,9 +197,8 @@ export default function HomeScreen() {
       <View style={styles.controls}>
         {!isActive ? (
           <TouchableOpacity style={styles.buttonStart} onPress={startTimer}>
-            {/* DÜZELTME: Süre başlamışsa ve durmuşsa 'Devam Et' yazar */}
             <Text style={styles.buttonText}>
-                {timeLeft < INITIAL_TIME && timeLeft > 0 ? "Devam Et" : "Başlat"}
+                {timeLeft < initialTime && timeLeft > 0 ? "Devam Et" : "Başlat"}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -201,12 +219,31 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', alignItems: 'center', paddingTop: 60 },
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#333' },
   
-  timerContainer: {
-    width: 250, height: 250, borderRadius: 125, borderWidth: 4, borderColor: '#4a90e2',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 30
+  // DÜZELTME: Genişlik ve hizalama ayarları
+  timerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center', // Tam ortala
+    marginBottom: 30,
+    width: '100%',
+    paddingHorizontal: 10, // Kenarlardan hafif boşluk bırak
   },
-  timerText: { fontSize: 60, fontWeight: 'bold', color: '#333' },
-  distractionText: { fontSize: 16, color: 'red', marginTop: 10, fontWeight: 'bold' },
+  adjustButton: {
+    padding: 5, // Butonun kendi boşluğunu azalttık
+  },
+  disabledButton: {
+    opacity: 0.5
+  },
+  
+  // DÜZELTME: Boyut küçültüldü (240 -> 200)
+  timerContainer: {
+    width: 200, height: 200, borderRadius: 100, borderWidth: 4, borderColor: '#4a90e2',
+    justifyContent: 'center', alignItems: 'center',
+    marginHorizontal: 10, // Yanlardan biraz daha az boşluk
+  },
+  // DÜZELTME: Font boyutu küçültüldü
+  timerText: { fontSize: 48, fontWeight: 'bold', color: '#333' },
+  distractionText: { fontSize: 13, color: 'red', marginTop: 8, fontWeight: 'bold' },
   
   categoryContainer: { width: '90%', marginBottom: 30 },
   subHeader: { fontSize: 16, marginBottom: 10, color: '#666', textAlign: 'center' },
