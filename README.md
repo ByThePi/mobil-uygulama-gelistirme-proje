@@ -48,7 +48,7 @@ Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyi
     * Expo Go uygulamasını telefonunuza indirin.
     * Terminalde çıkan QR kodu okutun.
 
-## 📂 Proje Mimarisi
+## Proje Mimarisi
 
 ```text
 src/
