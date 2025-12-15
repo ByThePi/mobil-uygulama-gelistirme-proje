@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, AppState } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { saveSession } from '../utils/storage';
 
-// BİLEŞENLERİMİZİ ÇAĞIRIYORUZ
+
 import CategorySelector from '../components/CategorySelector';
 import TimerCircle from '../components/TimerCircle';
 

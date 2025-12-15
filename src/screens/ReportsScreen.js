@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Dimensions, RefreshControl, Touchab
 import { useFocusEffect } from '@react-navigation/native';
 import { BarChart, PieChart } from 'react-native-chart-kit';
 import { getSessions, clearSessions } from '../utils/storage';
-import StatCard from '../components/StatCard'; // BİLEŞENİ ÇAĞIRDIK
+import StatCard from '../components/StatCard';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -44,10 +44,7 @@ export default function ReportsScreen() {
     ]);
   };
 
-  // Grafik verisi hazırlama fonksiyonları (getPieData, getBarData) aynı kalacak...
-  // Yer kaplamasın diye burayı kısa kesiyorum, sen eski kodundaki getPieData ve getBarData fonksiyonlarını buraya aynen koy.
-  const getPieData = () => { /* ... Eski kodun aynısı ... */ 
-      // Kopyalamayı unutma, yukarıdaki eski kodundan alabilirsin
+  const getPieData = () => {
       const categoryMap = {};
       sessions.forEach(s => {
         if (!categoryMap[s.category]) categoryMap[s.category] = 0;
@@ -62,7 +59,7 @@ export default function ReportsScreen() {
       }));
   };
 
-  const getBarData = () => { /* ... Eski kodun aynısı ... */
+  const getBarData = () => {
      const days = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
      const last7Days = [], values = [];
      for (let i = 6; i >= 0; i--) {

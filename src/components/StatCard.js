@@ -16,8 +16,8 @@ const styles = StyleSheet.create({
     width: '30%', 
     padding: 10, 
     borderRadius: 10, 
-    elevation: 3, // Android gölgesi
-    shadowColor: '#000', // iOS gölgesi
+    elevation: 3,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
