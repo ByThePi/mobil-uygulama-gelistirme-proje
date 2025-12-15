@@ -30,7 +30,7 @@ Projeyi yerel ortamınızda çalıştırmak için aşağıdaki adımları izleyi
 
 1.  **Repoyu Klonlayın:**
     ```bash
-    git clone [https://github.com/bythepi/OdaklanmaUygulamasi.git](https://github.com/bythepi/OdaklanmaUygulamasi.git)
+    git clone https://github.com/bythepi/OdaklanmaUygulamasi.git
     cd OdaklanmaUygulamasi
     ```
 
